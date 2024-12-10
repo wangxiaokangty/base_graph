@@ -1,0 +1,21 @@
+#ifndef BASE_GRAPH_BASEGRAPH_H
+#define BASE_GRAPH_BASEGRAPH_H
+
+#include <vector>
+#include <unordered_map>
+using namespace std;
+
+extern std::unordered_map<std::string, std::string> config;
+extern std::unordered_map<std::string, std::string> data_config;
+// An undirected graph will be converted into a directed graph.
+class BaseGraph {
+public:
+    int n_left,n_right,m,n;
+    vector<vector<int>> con;
+
+public:
+    BaseGraph();
+};
+
+
+#endif
