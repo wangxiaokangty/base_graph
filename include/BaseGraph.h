@@ -12,9 +12,13 @@ class BaseGraph {
 public:
     int n_left,n_right,m,n;
     vector<vector<int>> con;
+    vector<int> deg;
 
 public:
     BaseGraph();
+    void save_bin();
+    void read_bin();
+
 };
 
 

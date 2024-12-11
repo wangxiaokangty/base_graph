@@ -2,6 +2,7 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <iostream>
 
 
 #include "include/BaseGraph.h"
@@ -65,10 +66,13 @@ int main() {
     config = readConfigFile(configFilePath);
     data_config = readDataConfigFile(config["data_config_path"]);
 
-    TlsGraph g;
-    for(int i=0;i<10;i++){
-        printf("%f\n",g.tls_estimate(2));
-    }
+    BaseGraph g,g1;
+    g.save_bin();
+    g.read_bin();
+
+//    for(int i=0;i<10;i++){
+//        printf("%f\n",g.tls_estimate(2));
+//    }
 
     return 0;
 }
