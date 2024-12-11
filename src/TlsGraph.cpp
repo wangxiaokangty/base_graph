@@ -1,19 +1,21 @@
 #include "../include/TlsGraph.h"
 #include <cmath>
 #include <iostream>
+#include <chrono>
+#include <cmath>
+#include <algorithm>
+#include <numeric>
 
 using namespace std;
 
 TlsGraph::TlsGraph() {
+    iterate_num_sampler = RandomRange{0.0,1.00};
     sqrt_m = sqrt(m);
     edge_sampler = RandomRange(0,2*m-1);
     from_vertexes.reserve(2*m);
     to_vertexes.reserve(2*m);
-    vertex_degs.reserve(n);
     edge_degs.reserve(2*m);
-    vertex_degs.push_back(0); // for index 0
     for(int i=1;i<=n;i++){
-        vertex_degs.push_back(con[i].size());
         for(int j:con[i]){
             from_vertexes.push_back(i);
             to_vertexes.push_back(j);
@@ -26,10 +28,7 @@ TlsGraph::TlsGraph() {
         while (cnt++ % 10000000 == 0) cout<<"hash"<<endl;
         int left_node = from_vertexes[edge_cnt];
         int right_node = to_vertexes[edge_cnt];
-        is_edge.insert({left_node,right_node});
-        int left = vertex_degs[left_node];
-        int right = vertex_degs[right_node];
-        edge_degs.push_back(left+right);
+        edge_degs.push_back(deg[left_node]+deg[right_node]);
     }
 }
 
@@ -38,87 +37,50 @@ int TlsGraph::sample_wedge_based_edge(int edge) {
 }
 
 double TlsGraph::estimate_random_te() {
-    int random_edge =  edge_sampler.getRandomInt();
+    int random_edge = edge_sampler.getRandomInt();
     int left_node=from_vertexes[random_edge],right_node=to_vertexes[random_edge];
-    int left_node_deg = vertex_degs[left_node],right_node_deg = vertex_degs[right_node];
-    if (left_node_deg<2||right_node_deg<2){
-        return 0;
+    int left_deg=deg[left_node],right_deg=deg[right_node];
+    RandomRange middle_node_sampler{0,left_deg+right_deg-1};
+    int middle_node,isolate_node;
+    if (middle_node_sampler.getRandomInt() < left_deg){
+        middle_node = left_node;
+        isolate_node = right_node;
+    }else{
+        middle_node = right_node;
+        isolate_node = left_node;
     }
-    RandomRange wedge_sapler{0,left_node_deg+right_node_deg-1};
-    int wedge_random = wedge_sapler.getRandomInt();
-    if(wedge_random<left_node_deg){
-        // left_node in a side , the others in another side
-        int new_node = con[left_node][wedge_random];
-        if(new_node==right_node) return 0;
-        double bias = static_cast<double>(left_node_deg+right_node_deg) / (left_node_deg+right_node_deg - 2);
-        if(right_node_deg<vertex_degs[new_node]){
-            int tmp = new_node;
-            new_node = right_node;
-            right_node = tmp;
+    int neighbor_node = get_random_neighbor(middle_node);
+    if (neighbor_node == isolate_node) return 0;
+    int low_deg_node,high_deg_node;
+    if (deg[neighbor_node] < deg[isolate_node]){
+        low_deg_node = neighbor_node;
+        high_deg_node = isolate_node;
+    }else{
+        low_deg_node = isolate_node;
+        high_deg_node = neighbor_node;
+    }
+    int iterate_num;
+    if (deg[low_deg_node] < sqrt_m){
+        if (iterate_num_sampler.getRandomReal()<deg[low_deg_node]/sqrt_m){
+            iterate_num=1;
+        }else{
+            return 0;
         }
-        // new_node is the node with lower degree than right node
-        int iterate_num;
-        if(vertex_degs[new_node]<sqrt_m){
-            RandomRange real_sampler{0.0,1.0};
-            if(real_sampler.getRandomReal() < static_cast<double>(vertex_degs[new_node])/sqrt_m){
-                iterate_num = 1;
-            }else {
-                return 0;
-            }
-        }else {
-            iterate_num = static_cast<int>(vertex_degs[new_node]/sqrt_m)+1;
-        }
-        // iterate_num != 1,loop will run
-        std::vector<double> results;
-        RandomRange neighbor_sampler{0,vertex_degs[new_node]-1};
-        int number = neighbor_sampler.getRandomInt();
-        int fourth_node = con[new_node][number];
-        for(int i=0;i<iterate_num;i++){
-            double result = 0;
-            if ( (fourth_node<new_node) && (fourth_node!=left_node) && (is_edge.find({fourth_node,right_node})!=is_edge.end())){
-                result = std::max(static_cast<double>(vertex_degs[new_node]),sqrt_m)*0.25;
-            }
-            results.push_back(result);
-        }
-        double sum = static_cast<double>(std::accumulate(results.begin(), results.end(), 0.0));
-        return sum*edge_degs[random_edge]/iterate_num;
     }else {
-        // right_node in a side , the others in another side
-        int new_node = con[right_node][wedge_random-left_node_deg];
-        if(new_node==left_node) return 0;
-        double bias = static_cast<double>(left_node_deg+right_node_deg) / (left_node_deg+right_node_deg - 2);
-        if(left_node_deg<vertex_degs[new_node]){
-            int tmp = new_node;
-            new_node = left_node;
-            left_node = tmp;
-        }
-        // new_node is the node with lower degree than left node
-        int iterate_num;
-        if(vertex_degs[new_node]<sqrt_m){
-            RandomRange real_sampler{0.0,1.0};
-            if(real_sampler.getRandomReal() < static_cast<double>(vertex_degs[new_node])/sqrt_m){
-                iterate_num = 1;
-            }else {
-                return 0;
-            }
-        }else {
-            iterate_num = static_cast<int>(vertex_degs[new_node]/sqrt_m)+1;
-        }
-        // iterate_num != 1,loop will run
-        std::vector<double> results;
-        RandomRange neighbor_sampler{0,vertex_degs[new_node]-1};
-        int number = neighbor_sampler.getRandomInt();
-        int fourth_node = con[new_node][number];
-        for(int i=0;i<iterate_num;i++){
-            double result = 0;
-            if ( (fourth_node<new_node) && (fourth_node!=right_node) && (is_edge.find({fourth_node,left_node})!=is_edge.end())){
-                result = std::max(static_cast<double>(vertex_degs[new_node]),sqrt_m)*0.25;
-            }
-            results.push_back(result);
-        }
-        double sum = static_cast<double>(std::accumulate(results.begin(), results.end(), 0.0));
-        return sum*edge_degs[random_edge]/iterate_num;
+        iterate_num = static_cast<int>(deg[low_deg_node] / sqrt_m) + 1;
     }
+    vector<double> results;
+    int last_node;
+    for (int i=0;i<iterate_num;i++){
+        double tmp=0;
+        last_node = get_random_neighbor(low_deg_node);
+        if (is_butterfly(last_node,middle_node,high_deg_node) && (last_node<low_deg_node)){
+            tmp = max(sqrt_m,static_cast<double>(deg[low_deg_node]))*edge_degs[random_edge]/4.0;
+        }
+        results.push_back(tmp);
+    }
+    double result= accumulate(results.begin(),results.end(),0.0);
+    return result/iterate_num;
 }
 
 double TlsGraph::tls_estimate(int time_limit_seconds) {
@@ -134,7 +96,20 @@ double TlsGraph::tls_estimate(int time_limit_seconds) {
         results.push_back(tmp);
     }
 
+    cout << "num" << results.size()<<endl;
     double edge_average = std::accumulate(results.begin(), results.end(), 0.0)/results.size();
     // return edge_average*m;
     return edge_average*m;
+}
+
+int TlsGraph::get_random_neighbor(int vertex) {
+    RandomRange sampler{0,deg[vertex]-1};
+    return con[vertex][sampler.getRandomInt()];
+}
+
+bool TlsGraph::is_butterfly(int last_node, int middle_node, int high_deg_node) {
+    if (last_node==middle_node) return false;
+    auto it = lower_bound(con[high_deg_node].begin(),con[high_deg_node].end(),last_node);
+    if (*it != last_node) return false;
+    return true;
 }

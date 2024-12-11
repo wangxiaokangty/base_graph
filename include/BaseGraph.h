@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <unordered_map>
+#include <string>
 using namespace std;
 
 extern std::unordered_map<std::string, std::string> config;

@@ -1,7 +1,3 @@
-//
-// Created by wxk on 2024/12/9.
-//
-
 #ifndef BASE_GRAPH_TLSGRAPH_H
 #define BASE_GRAPH_TLSGRAPH_H
 
@@ -31,7 +27,7 @@ class TlsGraph : BaseGraph {
 public:
     std::unordered_set<std::pair<int, int>> is_edge;
     std::vector<int> from_vertexes,to_vertexes,vertex_degs,edge_degs;
-    RandomRange edge_sampler;
+    RandomRange edge_sampler,iterate_num_sampler;
     double sqrt_m;
 
 public:
@@ -39,7 +35,8 @@ public:
     int sample_wedge_based_edge(int edge);
     double tls_estimate(int time_limit_seconds);
     double estimate_random_te();
-
+    int get_random_neighbor(int vertex);
+    bool is_butterfly(int last_node,int middle_node,int isolate_node);
 
 };
 

@@ -1,12 +1,19 @@
 #include "../include/BaseGraph.h"
 #include <iostream>
+#include <cstring>
 #include <string>
 #include <filesystem>
 #include <cstdio>
+#include <algorithm>
 
 using namespace std;
 
 BaseGraph::BaseGraph() {
+    if (filesystem::exists(config["serialize_path"])){
+        read_bin();
+        return;
+    }
+
     n_left = stoi(data_config["n_left"]);
     n_right = stoi(data_config["n_right"]);
     n = n_right+n_left;
@@ -47,6 +54,8 @@ BaseGraph::BaseGraph() {
     for(int i=1;i<=n;i++){
         deg[i]=con[i].size();
     }
+
+    save_bin();
 }
 
 void BaseGraph::save_bin() {
@@ -62,19 +71,22 @@ void BaseGraph::save_bin() {
             sort(con[i].begin(), con[i].end());
             fwrite(con[i].data(),sizeof(int),con[i].size(),fout);
         }
+        fclose(fout);
     }
 }
 
 void BaseGraph::read_bin() {
     if (filesystem::exists(config["serialize_path"])){
         cout<<"文件已存在"<<endl;
-        FILE* fin = fopen(config["serialize_path"].c_str(),"wb");
+        FILE* fin = fopen(config["serialize_path"].c_str(),"rb");
+        cout<<fin<<endl;
+
         fread(&n_left, sizeof(int), 1, fin);
         fread(&n_right, sizeof(int), 1, fin);
         fread(&n, sizeof(int), 1, fin);
         fread(&m, sizeof(int), 1, fin);
         deg.resize(n+1);
-        fwrite(deg.data(), sizeof(int), n+1, fin);
+        fread(deg.data(), sizeof(int), n+1, fin);
         con.resize(n+1);
         for (int i = 1; i <= n; ++i) {
             int size = deg[i]; // 根据度数推导出数组的大小
